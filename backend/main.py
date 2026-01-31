@@ -1,26 +1,39 @@
 import os
 import random
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+# ==========================
+# FastAPI App Initialization
+# ==========================
 app = FastAPI(title="AI Voice Detection Backend")
 
-FRONTEND_URL = os.getenv("FRONTEND_URL")
-allowed_origins = [FRONTEND_URL] if FRONTEND_URL else ["http://localhost:3000"]
+# --------------------------
+# CORS Settings
+# --------------------------
+allowed_origins = [
+    "https://voice-detect-murex.vercel.app/",  # replace with your deployed frontend URL
+    "http://localhost:3000"               # local testing
+]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_origins=["https://voice-detect-one.vercel.app/"],
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"]
 )
 
+# ==========================
+# Root Endpoint
+# ==========================
 @app.get("/")
 async def root():
     return {"message": "AI Voice Detection Backend Running ✅"}
 
+# ==========================
+# Voice Detection Endpoint
+# ==========================
 @app.post("/detect")
 async def detect(audio: UploadFile = File(...)):
     # Validate file type
@@ -30,35 +43,29 @@ async def detect(audio: UploadFile = File(...)):
             detail="Invalid audio file format. Use WAV, MP3, or OGG."
         )
 
+    # Read audio file
     contents = await audio.read()
     size = len(contents)
     filename = audio.filename.lower()
 
     # --------------------------
-    # Foolproof Hackathon Logic
+    # Dummy Detection Logic
     # --------------------------
-    # 1️⃣ Use filename keywords for guaranteed result
     if "ai" in filename:
         is_human = False
     elif "human" in filename:
         is_human = True
-    # 2️⃣ Otherwise, size-based rules
     elif size < 300_000:
-        is_human = True  # short clips → Human voice
+        is_human = True
     elif size > 1_000_000:
-        is_human = False  # large files → music/AI
+        is_human = False
     else:
-        is_human = True  # medium size → speech
+        is_human = True
 
-    # 3️⃣ Confidence
-    if is_human:
-        confidence = round(random.uniform(0.85, 0.99), 2)
-    else:
-        confidence = round(random.uniform(0.85, 0.99), 2)
-
+    confidence = round(random.uniform(0.85, 0.99), 2)
     classification = "Human" if is_human else "AI"
 
-    # 4️⃣ Explanations
+    # Explanations
     human_explanations = [
         "Pitch varies naturally like human speech",
         "Duration and size suggest natural voice",
@@ -82,6 +89,7 @@ async def detect(audio: UploadFile = File(...)):
         "confidence": confidence,
         "explanation": explanation
     }
+
 
 
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef } from "react";
-const BACKEND_URL = "https://voice-detect-backend.onrender.com";
+
+const BACKEND_URL = "https://voice-detect-g9mx.onrender.com";
 
 export default function HomePage() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -10,79 +11,71 @@ export default function HomePage() {
   const [showResult, setShowResult] = useState(false);
   const fileInputRef = useRef(null);
 
-  // ✅ FIXED: handleFileChange added
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     setSelectedFile(file);
-    // Reset previous results
     setDetectionResult(null);
     setShowResult(false);
   };
 
- const handleDetectVoice = async () => {
-  if (!selectedFile) {
-    alert("Please select a file first!");
-    return;
-  }
-
-  setLoading(true);
-  setShowResult(false);
-
-  const formData = new FormData();
-  formData.append("audio", selectedFile);
-
-  try {
-    // ✅ Use the global BACKEND_URL
-    const response = await fetch(`${BACKEND_URL}/detect`, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error("Backend returned an error");
+  const handleDetectVoice = async () => {
+    if (!selectedFile) {
+      alert("Please select a file first!");
+      return;
     }
 
-    const result = await response.json();
-    result.explanation = result.explanation || ["No explanation provided"];
-    setDetectionResult(result);
-    setShowResult(true);
+    setLoading(true);
+    setShowResult(false);
 
-  } catch (err) {
-    console.error(err);
-    // ✅ Fix alert to show correct backend URL
-    alert(`Failed to detect voice. Check backend at ${BACKEND_URL}`);
-  } finally {
-    setLoading(false);
-  }
-};
+    const formData = new FormData();
+    formData.append("audio", selectedFile);
 
+    try {
+      const response = await fetch(`${BACKEND_URL}/detect`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Backend Error: ${text}`);
+      }
+
+      const result = await response.json();
+      result.explanation = result.explanation || ["No explanation provided"];
+      setDetectionResult(result);
+      setShowResult(true);
+
+    } catch (err) {
+      console.error("Detection failed:", err);
+      alert(`Failed to detect voice. Check backend at ${BACKEND_URL}`);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const resetDetection = () => {
     setSelectedFile(null);
     setDetectionResult(null);
     setShowResult(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
-    <div style={{ 
-      minHeight: "100vh", 
+    <div style={{
+      minHeight: "100vh",
       background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
       padding: "40px",
       fontFamily: "Arial, sans-serif"
     }}>
       <div style={{ maxWidth: "500px", margin: "0 auto" }}>
-        <h1 style={{ 
-          color: "white", 
-          textAlign: "center", 
-          fontSize: "2.5rem", 
+        <h1 style={{
+          color: "white",
+          textAlign: "center",
+          fontSize: "2.5rem",
           marginBottom: "2rem",
           textShadow: "0 2px 10px rgba(0,0,0,0.3)"
-        }}>
-          🎙️ AI Voice Detection
-        </h1>
+        }}>🎙️ AI Voice Detection</h1>
 
         {!showResult ? (
           <>
@@ -99,13 +92,12 @@ export default function HomePage() {
                 fontSize: "1.1rem",
                 marginBottom: "1rem",
                 fontWeight: "500"
-              }}>
-                Select Audio File
-              </label>
-              <input 
-                type="file" 
-                accept="audio/*" 
-                onChange={handleFileChange}  // ✅ fixed here
+              }}>Select Audio File</label>
+
+              <input
+                type="file"
+                accept="audio/*"
+                onChange={handleFileChange}
                 ref={fileInputRef}
                 style={{
                   width: "100%",
@@ -116,6 +108,7 @@ export default function HomePage() {
                   cursor: "pointer"
                 }}
               />
+
               {selectedFile && (
                 <p style={{ marginTop: "10px", color: "#27ae60", fontSize: "0.95rem" }}>
                   ✅ {selectedFile.name}
@@ -153,14 +146,10 @@ export default function HomePage() {
             boxShadow: "0 25px 50px rgba(0,0,0,0.15)",
             border: "1px solid rgba(255,255,255,0.2)"
           }}>
-            <h2 style={{ 
-              color: "#2c3e50", 
-              marginBottom: "1.5rem",
-              fontSize: "1.8rem"
-            }}>
+            <h2 style={{ color: "#2c3e50", marginBottom: "1.5rem", fontSize: "1.8rem" }}>
               🎯 Detection Complete!
             </h2>
-            
+
             <div style={{
               fontSize: "3rem",
               fontWeight: "bold",
@@ -168,8 +157,9 @@ export default function HomePage() {
               padding: "1.5rem",
               borderRadius: "20px",
               display: "inline-block",
-              background: detectionResult.classification === "Human" ? 
-                "rgba(46, 204, 113, 0.2)" : "rgba(231, 76, 60, 0.2)",
+              background: detectionResult.classification === "Human"
+                ? "rgba(46, 204, 113, 0.2)"
+                : "rgba(231, 76, 60, 0.2)",
               border: `3px solid ${detectionResult.classification === "Human" ? "#27ae60" : "#e74c3c"}`
             }}>
               {detectionResult.classification}
@@ -181,24 +171,13 @@ export default function HomePage() {
               color: "#34495e",
               fontWeight: "500"
             }}>
-              Confidence: <span style={{
-                fontSize: "2.2rem",
-                color: "#e67e22",
-                fontWeight: "bold"
-              }}>
+              Confidence: <span style={{ fontSize: "2.2rem", color: "#e67e22", fontWeight: "bold" }}>
                 {(detectionResult.confidence * 100).toFixed(0)}%
               </span>
             </div>
 
-            <div style={{
-              textAlign: "left",
-              marginTop: "2rem"
-            }}>
-              <h3 style={{
-                color: "#2c3e50",
-                marginBottom: "1rem",
-                fontSize: "1.3rem"
-              }}>📋 Explanation</h3>
+            <div style={{ textAlign: "left", marginTop: "2rem" }}>
+              <h3 style={{ color: "#2c3e50", marginBottom: "1rem", fontSize: "1.3rem" }}>📋 Explanation</h3>
               <ul style={{ margin: 0, paddingLeft: "1.5rem" }}>
                 {detectionResult.explanation.map((feature, i) => (
                   <li key={i} style={{
@@ -209,9 +188,7 @@ export default function HomePage() {
                     borderLeft: "4px solid #3498db",
                     fontSize: "1rem",
                     color: "#2c3e50"
-                  }}>
-                    {feature}
-                  </li>
+                  }}>{feature}</li>
                 ))}
               </ul>
             </div>
@@ -240,6 +217,7 @@ export default function HomePage() {
     </div>
   );
 }
+
 
 
 
