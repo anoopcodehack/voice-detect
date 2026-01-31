@@ -5,20 +5,22 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="AI Voice Detection Backend")
 
-# ✅ Read frontend URL from environment variable
 FRONTEND_URL = os.getenv("FRONTEND_URL")
 
-if not FRONTEND_URL:
-    raise RuntimeError("FRONTEND_URL environment variable is not set")
+allowed_origins = (
+    [FRONTEND_URL]
+    if FRONTEND_URL
+    else ["http://localhost:3000"]
+)
 
-# ✅ Proper CORS (NO localhost hardcoding)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.get("/")
 async def root():
