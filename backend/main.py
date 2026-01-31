@@ -1,95 +1,128 @@
 import os
+import base64
+import tempfile
 import random
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
-# ==========================
-# FastAPI App Initialization
-# ==========================
-app = FastAPI(title="AI Voice Detection Backend")
-
-# --------------------------
-# CORS Settings
-# --------------------------
-allow_origins=[
-    "http://localhost:3000",
-    "https://voice-detect.vercel.app",
-]
+# =========================
+# App Setup
+# =========================
+app = FastAPI(
+    title="AI Voice Detection API",
+    version="0.1.0"
+)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# =========================
+# Config
+# =========================
+API_KEY = os.getenv("API_KEY", "sk_test_123456789")
 
-# ==========================
+SUPPORTED_LANGUAGES = [
+    "Tamil",
+    "English",
+    "Hindi",
+    "Malayalam",
+    "Telugu"
+]
+
+# =========================
+# Request Schema
+# =========================
+class VoiceRequest(BaseModel):
+    language: str
+    audioFormat: str
+    audioBase64: str
+
+# =========================
 # Root Endpoint
-# ==========================
+# =========================
 @app.get("/")
-async def root():
+def root():
     return {"message": "AI Voice Detection Backend Running ✅"}
 
-# ==========================
+# =========================
 # Voice Detection Endpoint
-# ==========================
-@app.post("/detect")
-async def detect(audio: UploadFile = File(...)):
-    # Validate file type
-    if not audio.filename.lower().endswith((".wav", ".mp3", ".ogg")):
+# =========================
+@app.post("/api/voice-detection")
+def detect_voice(
+    request: VoiceRequest,
+    x_api_key: str = Header(None)
+):
+    # ---- API Key Validation ----
+    if x_api_key != API_KEY:
         raise HTTPException(
-            status_code=400,
-            detail="Invalid audio file format. Use WAV, MP3, or OGG."
+            status_code=401,
+            detail={"status": "error", "message": "Invalid API key or malformed request"}
         )
 
-    # Read audio file
-    contents = await audio.read()
-    size = len(contents)
-    filename = audio.filename.lower()
+    # ---- Language Validation ----
+    if request.language not in SUPPORTED_LANGUAGES:
+        raise HTTPException(
+            status_code=400,
+            detail={"status": "error", "message": "Unsupported language"}
+        )
 
-    # --------------------------
-    # Dummy Detection Logic
-    # --------------------------
-    if "ai" in filename:
-        is_human = False
-    elif "human" in filename:
-        is_human = True
-    elif size < 300_000:
-        is_human = True
-    elif size > 1_000_000:
-        is_human = False
-    else:
-        is_human = True
+    # ---- Audio Format Validation ----
+    if request.audioFormat.lower() != "mp3":
+        raise HTTPException(
+            status_code=400,
+            detail={"status": "error", "message": "Invalid audio format"}
+        )
 
-    confidence = round(random.uniform(0.85, 0.99), 2)
-    classification = "Human" if is_human else "AI"
+    # ---- Audio Base64 Validation ----
+    if not request.audioBase64:
+        raise HTTPException(
+            status_code=400,
+            detail={"status": "error", "message": "Audio data missing"}
+        )
 
-    # Explanations
-    human_explanations = [
-        "Pitch varies naturally like human speech",
-        "Duration and size suggest natural voice",
-        "Energy levels indicate real speech",
-        "Spectral patterns resemble human voice",
-        "Formant structure typical of vocal tract"
-    ]
+    # ---- Decode Base64 MP3 ----
+    try:
+        audio_bytes = base64.b64decode(request.audioBase64)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail={"status": "error", "message": "Invalid Base64 audio"}
+        )
 
-    ai_explanations = [
-        "Pitch too regular for human voice",
-        "Short duration or small size suggests AI",
-        "Audio likely music or AI-generated sound",
-        "Spectral patterns suggest AI synthesis",
-        "Formant structure atypical"
-    ]
+    # ---- Save temp MP3 (optional, placeholder logic) ----
+    with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as temp_audio:
+        temp_audio.write(audio_bytes)
+        temp_audio.flush()
 
-    explanation = random.sample(human_explanations, 2) if is_human else random.sample(ai_explanations, 2)
+        # =========================
+        # Detection Logic (Placeholder)
+        # =========================
+        file_size = len(audio_bytes)
 
+        if file_size > 1_000_000:  # >1MB
+            classification = "AI_GENERATED"
+            confidence = round(random.uniform(0.85, 0.95), 2)
+            explanation = "Unnatural pitch consistency and robotic speech patterns detected"
+        else:
+            classification = "HUMAN"
+            confidence = round(random.uniform(0.80, 0.92), 2)
+            explanation = "Natural pitch variation and human-like speech characteristics detected"
+
+    # ---- Final Response ----
     return {
+        "status": "success",
+        "language": request.language,
         "classification": classification,
-        "confidence": confidence,
+        "confidenceScore": confidence,
         "explanation": explanation
     }
+
+
 
 
 

@@ -1,8 +1,8 @@
 fastapi
-uvicorn
-numpy
+uvicorn[standard]
+python-dotenv
 librosa
-torch
-pydub
+numpy
 soundfile
-python-multipart
+
+
