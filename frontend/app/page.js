@@ -1,225 +1,121 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 
-const API = process.env.NEXT_PUBLIC_API_URL;
-
-
+const API_URL = "https://voice-detect-1-c20t.onrender.com/api/voice-detection"; // Your backend
+const API_KEY = "sk_test_123456789"; // Your API key
+const SUPPORTED_LANGUAGES = ["Tamil", "English", "Hindi", "Malayalam", "Telugu"];
 
 export default function HomePage() {
   const [selectedFile, setSelectedFile] = useState(null);
+  const [language, setLanguage] = useState(SUPPORTED_LANGUAGES[0]);
   const [loading, setLoading] = useState(false);
-  const [detectionResult, setDetectionResult] = useState(null);
-  const [showResult, setShowResult] = useState(false);
-  const fileInputRef = useRef(null);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    setSelectedFile(file);
-    setDetectionResult(null);
-    setShowResult(false);
+    setSelectedFile(e.target.files[0]);
+    setResult(null);
+    setError("");
   };
 
-  const handleDetectVoice = async () => {
-    if (!selectedFile) {
-      alert("Please select a file first!");
-      return;
-    }
-
+  const handleSubmit = async () => {
+    if (!selectedFile) return setError("Please select an MP3 file first");
     setLoading(true);
-    setShowResult(false);
+    setError("");
+    setResult(null);
 
-    const formData = new FormData();
-    formData.append("audio", selectedFile);
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(selectedFile);
+      reader.onload = async () => {
+        const base64Audio = reader.result.split(",")[1];
 
-   try {
-  const response = await fetch(`${API}/detect`, {
-    method: "POST",
-    body: formData,
-  });
+        const payload = {
+          language,
+          audioFormat: "mp3",
+          audioBase64: base64Audio,
+        };
 
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": API_KEY,
+          },
+          body: JSON.stringify(payload),
+        });
 
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Backend Error: ${text}`);
-      }
+        const data = await response.json();
 
-      const result = await response.json();
-      result.explanation = result.explanation || ["No explanation provided"];
-      setDetectionResult(result);
-      setShowResult(true);
-
+        if (data.status === "success") {
+          setResult(data);
+        } else {
+          setError(data.message || JSON.stringify(data));
+        }
+        setLoading(false);
+      };
     } catch (err) {
-      console.error("Detection failed:", err);
-      alert(`Failed to detect voice. Check backend at ${BACKEND_URL}`);
-    } finally {
+      setError("Error sending request: " + err.message);
       setLoading(false);
     }
   };
 
-  const resetDetection = () => {
-    setSelectedFile(null);
-    setDetectionResult(null);
-    setShowResult(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-      padding: "40px",
-      fontFamily: "Arial, sans-serif"
-    }}>
-      <div style={{ maxWidth: "500px", margin: "0 auto" }}>
-        <h1 style={{
-          color: "white",
-          textAlign: "center",
-          fontSize: "2.5rem",
-          marginBottom: "2rem",
-          textShadow: "0 2px 10px rgba(0,0,0,0.3)"
-        }}>🎙️ AI Voice Detection</h1>
-
-        {!showResult ? (
-          <>
-            <div style={{
-              background: "rgba(255,255,255,0.95)",
-              padding: "2rem",
-              borderRadius: "20px",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
-              marginBottom: "1rem"
-            }}>
-              <label style={{
-                display: "block",
-                color: "#333",
-                fontSize: "1.1rem",
-                marginBottom: "1rem",
-                fontWeight: "500"
-              }}>Select Audio File</label>
-
-              <input
-                type="file"
-                accept="audio/*"
-                onChange={handleFileChange}
-                ref={fileInputRef}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  border: "2px dashed #667eea",
-                  borderRadius: "10px",
-                  background: "white",
-                  cursor: "pointer"
-                }}
-              />
-
-              {selectedFile && (
-                <p style={{ marginTop: "10px", color: "#27ae60", fontSize: "0.95rem" }}>
-                  ✅ {selectedFile.name}
-                </p>
-              )}
-            </div>
-
-            <button
-              style={{
-                width: "100%",
-                padding: "15px",
-                background: loading ? "#bdc3c7" : "#5c5cff",
-                color: "#fff",
-                border: "none",
-                borderRadius: "15px",
-                fontSize: "1.2rem",
-                fontWeight: "bold",
-                cursor: loading ? "not-allowed" : "pointer",
-                boxShadow: "0 10px 30px rgba(92, 92, 255, 0.4)",
-                transition: "all 0.3s ease"
-              }}
-              onClick={handleDetectVoice}
-              disabled={loading || !selectedFile}
-            >
-              {loading ? "🔄 Detecting..." : "🚀 Detect Voice"}
-            </button>
-          </>
-        ) : (
-          <div style={{
-            background: "rgba(255,255,255,0.95)",
-            backdropFilter: "blur(20px)",
-            padding: "2.5rem",
-            borderRadius: "25px",
-            textAlign: "center",
-            boxShadow: "0 25px 50px rgba(0,0,0,0.15)",
-            border: "1px solid rgba(255,255,255,0.2)"
-          }}>
-            <h2 style={{ color: "#2c3e50", marginBottom: "1.5rem", fontSize: "1.8rem" }}>
-              🎯 Detection Complete!
-            </h2>
-
-            <div style={{
-              fontSize: "3rem",
-              fontWeight: "bold",
-              margin: "1.5rem 0",
-              padding: "1.5rem",
-              borderRadius: "20px",
-              display: "inline-block",
-              background: detectionResult.classification === "Human"
-                ? "rgba(46, 204, 113, 0.2)"
-                : "rgba(231, 76, 60, 0.2)",
-              border: `3px solid ${detectionResult.classification === "Human" ? "#27ae60" : "#e74c3c"}`
-            }}>
-              {detectionResult.classification}
-            </div>
-
-            <div style={{
-              fontSize: "1.3rem",
-              margin: "1.5rem 0",
-              color: "#34495e",
-              fontWeight: "500"
-            }}>
-              Confidence: <span style={{ fontSize: "2.2rem", color: "#e67e22", fontWeight: "bold" }}>
-                {(detectionResult.confidence * 100).toFixed(0)}%
-              </span>
-            </div>
-
-            <div style={{ textAlign: "left", marginTop: "2rem" }}>
-              <h3 style={{ color: "#2c3e50", marginBottom: "1rem", fontSize: "1.3rem" }}>📋 Explanation</h3>
-              <ul style={{ margin: 0, paddingLeft: "1.5rem" }}>
-                {detectionResult.explanation.map((feature, i) => (
-                  <li key={i} style={{
-                    background: "rgba(52, 152, 219, 0.1)",
-                    margin: "0.5rem 0",
-                    padding: "1rem",
-                    borderRadius: "12px",
-                    borderLeft: "4px solid #3498db",
-                    fontSize: "1rem",
-                    color: "#2c3e50"
-                  }}>{feature}</li>
-                ))}
-              </ul>
-            </div>
-
-            <button
-              onClick={resetDetection}
-              style={{
-                width: "100%",
-                marginTop: "2rem",
-                padding: "12px",
-                background: "#e74c3c",
-                color: "white",
-                border: "none",
-                borderRadius: "12px",
-                fontSize: "1.1rem",
-                fontWeight: "bold",
-                cursor: "pointer",
-                boxShadow: "0 8px 25px rgba(231, 76, 60, 0.3)"
-              }}
-            >
-              🔄 Try Another Audio
-            </button>
-          </div>
-        )}
+    <div style={{ padding: "2rem", fontFamily: "Arial, sans-serif" }}>
+      <h1>AI Voice Detection</h1>
+      <div style={{ marginBottom: "1rem" }}>
+        <label>
+          Select Language:{" "}
+          <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <option key={lang} value={lang}>
+                {lang}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
+
+      <div style={{ marginBottom: "1rem" }}>
+        <input type="file" accept="audio/mp3" onChange={handleFileChange} />
+      </div>
+
+      <button onClick={handleSubmit} disabled={loading}>
+        {loading ? "Detecting..." : "Detect Voice"}
+      </button>
+
+      {error && <p style={{ color: "red", marginTop: "1rem" }}>{error}</p>}
+
+      {result && (
+        <div
+          style={{
+            marginTop: "1rem",
+            padding: "1rem",
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+            backgroundColor: "#f9f9f9",
+          }}
+        >
+          <h2>Result</h2>
+          <p>
+            <b>Language:</b> {result.language}
+          </p>
+          <p>
+            <b>Classification:</b> {result.classification}
+          </p>
+          <p>
+            <b>Confidence Score:</b> {result.confidenceScore}
+          </p>
+          <p>
+            <b>Explanation:</b> {result.explanation}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
+
 
 
 

@@ -1,22 +1,33 @@
 import requests
 import base64
-import json
 
 # =========================
 # CONFIG
 # =========================
-API_URL = "https://voice-detect-1-d9gm.onrender.com/api/voice-detection"  # your deployed endpoint
+API_URL = "https://voice-detect-1-c20t.onrender.com/api/voice-detection" # your deployed backend URL
 API_KEY = "sk_test_123456789"  # your API key
 ALLOWED_LANGUAGES = ["Tamil", "English", "Hindi", "Malayalam", "Telugu"]
 
-# Sample audio (small dummy MP3)
+# Dummy MP3 audio
 DUMMY_AUDIO = base64.b64encode(b"FAKE_MP3_DATA").decode("utf-8")
 
 # =========================
 # HELPER FUNCTION
 # =========================
+def safe_get_message(response):
+    """Safely get 'message' from JSON or fallback"""
+    try:
+        data = response.json()
+        if isinstance(data, dict):
+            return data.get("message") or data.get("detail", {}).get("message", "")
+    except Exception:
+        pass
+    return ""  # fallback if not JSON
+
 def check_response_shape(data):
     required_fields = ["status", "language", "classification", "confidenceScore", "explanation"]
+    if not isinstance(data, dict):
+        return False, "Response is not a JSON object"
     if not all(field in data for field in required_fields):
         return False, "Missing fields"
     if data["classification"] not in ["HUMAN", "AI_GENERATED"]:
@@ -30,15 +41,7 @@ def test_api_key_enforcement():
     print("Test 1: API Key enforcement (no key)...")
     payload = {"language": "Tamil", "audioFormat": "mp3", "audioBase64": DUMMY_AUDIO}
     response = requests.post(API_URL, json=payload)  # No API key
-    try:
-        data = response.json()
-    except ValueError:
-        data = {}
-
-    message = ""
-    if isinstance(data, dict):
-        message = data.get("message") or data.get("detail", {}).get("message", "")
-
+    message = safe_get_message(response)
     if response.status_code == 401 or message == "Invalid API key or malformed request":
         print("✅ PASS")
     else:
@@ -50,15 +53,7 @@ def test_language_restriction():
     payload = {"language": "French", "audioFormat": "mp3", "audioBase64": DUMMY_AUDIO}
     headers = {"x-api-key": API_KEY}
     response = requests.post(API_URL, json=payload, headers=headers)
-    try:
-        data = response.json()
-    except ValueError:
-        data = {}
-
-    message = ""
-    if isinstance(data, dict):
-        message = data.get("message") or data.get("detail", {}).get("message", "")
-
+    message = safe_get_message(response)
     if response.status_code == 400 or message == "Unsupported language":
         print("✅ PASS")
     else:
@@ -73,10 +68,9 @@ def test_allowed_languages():
         response = requests.post(API_URL, json=payload, headers=headers)
         try:
             data = response.json()
-        except ValueError:
+        except Exception:
             print(f"❌ FAIL: {lang} → Invalid JSON")
             continue
-
         ok, msg = check_response_shape(data)
         if response.status_code == 200 and ok:
             print(f"✅ PASS: {lang}")

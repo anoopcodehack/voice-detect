@@ -94,7 +94,7 @@ def detect_voice(
             detail={"status": "error", "message": "Invalid Base64 audio"}
         )
 
-    # ---- Save temp MP3 (optional, placeholder logic) ----
+    # ---- Save temp MP3 (optional placeholder) ----
     with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as temp_audio:
         temp_audio.write(audio_bytes)
         temp_audio.flush()
