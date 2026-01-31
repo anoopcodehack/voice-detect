@@ -11,9 +11,12 @@ export default function HomePage() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
 
-  // Use environment variables for Vercel
-  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+  // Environment variables
+  const BACKEND_BASE = process.env.NEXT_PUBLIC_API_URL; // e.g., https://voice-detect-backend.onrender.com
   const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
+
+  // Make sure to append the actual route your FastAPI exposes
+  const API_URL = `${BACKEND_BASE}/detect`; // ⚠ Adjust "/detect" if your backend uses a different path
 
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
@@ -31,18 +34,18 @@ export default function HomePage() {
     setError("");
     setResult(null);
 
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
 
-    reader.onload = async () => {
-      const base64Audio = reader.result.split(",")[1]; // remove prefix
-      const payload = {
-        language,
-        audioFormat: "mp3",
-        audioBase64: base64Audio,
-      };
+      reader.onload = async () => {
+        const base64Audio = reader.result.split(",")[1]; // remove prefix
+        const payload = {
+          language,
+          audioFormat: "mp3",
+          audioBase64: base64Audio,
+        };
 
-      try {
         const res = await fetch(API_URL, {
           method: "POST",
           headers: {
@@ -52,26 +55,24 @@ export default function HomePage() {
           body: JSON.stringify(payload),
         });
 
-        let data;
-        try {
-          data = await res.json();
-        } catch {
-          setError("Invalid response from backend");
-          setLoading(false);
-          return;
+        if (!res.ok) {
+          throw new Error(`Backend returned status ${res.status}`);
         }
+
+        const data = await res.json();
 
         if (data.status === "success") {
           setResult(data);
         } else {
           setError(data.message || JSON.stringify(data));
         }
-      } catch (err) {
-        setError("Network error: " + err.message);
-      } finally {
+
         setLoading(false);
-      }
-    };
+      };
+    } catch (err) {
+      setError("Network or file error: " + err.message);
+      setLoading(false);
+    }
   };
 
   return (
@@ -99,11 +100,7 @@ export default function HomePage() {
         {loading ? "Detecting..." : "Detect Voice"}
       </button>
 
-      {error && (
-        <p style={{ color: "red", marginTop: "1rem" }}>
-          {error}
-        </p>
-      )}
+      {error && <p style={{ color: "red", marginTop: "1rem" }}>{error}</p>}
 
       {result && (
         <div
