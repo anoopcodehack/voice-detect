@@ -1,11 +1,12 @@
-import os
-import requests
+from fastapi.testclient import TestClient
+from main import app
 
-# Default to local API for faster dev feedback; allow override with env var
-API_URL = os.getenv("API_URL", "http://127.0.0.1:8000/api/voice-detection")
-API_KEY = os.getenv("API_KEY", "sk_test_123456789")
+API_KEY = "sk_test_123456789"
 ALLOWED_LANGUAGES = ["Tamil", "English", "Hindi", "Malayalam", "Telugu"]
 DUMMY_AUDIO = b"FAKE_MP3_DATA"
+
+client = TestClient(app)
+
 
 def check_response_shape(data):
     required_fields = ["status", "language", "classification", "confidenceScore", "explanation"]
@@ -15,19 +16,21 @@ def check_response_shape(data):
         return False, f"Invalid classification: {data['classification']}"
     return True, ""
 
+
+def post_audio(language, headers=None, audio_bytes=DUMMY_AUDIO):
+    files = {"audio": ("test.mp3", audio_bytes, "audio/mpeg")}
+    data = {"language": language}
+    return client.post("/api/voice-detection", files=files, data=data, headers=headers or {})
+
+
 def test_api_key_enforcement():
     print("Test 1: API Key enforcement (no key)...")
-    payload = {"language": "Tamil", "audioFormat": "mp3", "audioBase64": DUMMY_AUDIO}
-    response = requests.post(API_URL, json=payload)
-    try:
-        data = response.json()
-    except:
-        data = {}
-    message = data.get("message") if isinstance(data, dict) else ""
-    if response.status_code == 401 or message == "Invalid API key or malformed request":
+    response = post_audio("Tamil", headers={})
+    if response.status_code == 401:
         print("✅ PASS")
     else:
-        print("❌ FAIL", response.text)
+        print("❌ FAIL", response.status_code, response.text)
+
 
 def test_language_restriction():
     print("\nTest 2: Language restriction (invalid language)...")
@@ -37,6 +40,7 @@ def test_language_restriction():
         print("✅ PASS")
     else:
         print("❌ FAIL", response.status_code, response.text)
+
 
 def test_allowed_languages():
     print("\nTest 3: Test all allowed languages...")
@@ -54,8 +58,8 @@ def test_allowed_languages():
         else:
             print(f"❌ FAIL: {lang} → {msg} (status: {response.status_code})")
 
+
 if __name__ == "__main__":
     test_api_key_enforcement()
     test_language_restriction()
     test_allowed_languages()
-
