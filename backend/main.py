@@ -9,9 +9,10 @@ from pydantic import BaseModel
 app = FastAPI(title="AI Voice Detection API", version="0.1.0")
 
 # CORS (allow frontend)
+origins = ["http://localhost:3000", "https://voice-detect-inky.vercel.app/"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
