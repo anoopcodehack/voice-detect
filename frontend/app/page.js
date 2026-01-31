@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+const BACKEND_URL = "https://voice-detect-backend.onrender.com";
 
 export default function HomePage() {
   const [selectedFile, setSelectedFile] = useState(null);
