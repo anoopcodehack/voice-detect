@@ -2,7 +2,9 @@
 
 import { useState, useRef } from "react";
 
-const BACKEND_URL = "https://voice-detect-vkuw.onrender.com";
+const API = process.env.NEXT_PUBLIC_API_URL;
+
+
 
 export default function HomePage() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -30,11 +32,12 @@ export default function HomePage() {
     const formData = new FormData();
     formData.append("audio", selectedFile);
 
-    try {
-      const response = await fetch( "https://voice-detect-vkuw.onrender.com/detect", {
-        method: "POST",
-        body: formData,
-      });
+   try {
+  const response = await fetch(`${API}/detect`, {
+    method: "POST",
+    body: formData,
+  });
+
 
       if (!response.ok) {
         const text = await response.text();
