@@ -11,18 +11,19 @@ app = FastAPI(title="AI Voice Detection Backend")
 # --------------------------
 # CORS Settings
 # --------------------------
-allowed_origins = [
-    "https://voice-detect-murex.vercel.app/",  # replace with your deployed frontend URL
-    "http://localhost:3000"               # local testing
+allow_origins=[
+    "http://localhost:3000",
+    "https://voice-detect.vercel.app",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
-    allow_headers=["*"]
+    allow_headers=["*"],
 )
+
 
 # ==========================
 # Root Endpoint

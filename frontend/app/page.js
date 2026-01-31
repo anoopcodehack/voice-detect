@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 
-const BACKEND_URL = "https://voice-detect-g9mx.onrender.com";
+const BACKEND_URL = "https://voice-detect-vkuw.onrender.com";
 
 export default function HomePage() {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -31,7 +31,7 @@ export default function HomePage() {
     formData.append("audio", selectedFile);
 
     try {
-      const response = await fetch(`${BACKEND_URL}/detect`, {
+      const response = await fetch( "https://voice-detect-vkuw.onrender.com/detect", {
         method: "POST",
         body: formData,
       });
