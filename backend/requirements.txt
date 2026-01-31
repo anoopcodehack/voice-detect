@@ -4,5 +4,6 @@ python-dotenv
 librosa
 numpy
 soundfile
+python-multipart
 
 
