@@ -19,42 +19,43 @@ export default function HomePage() {
     setShowResult(false);
   };
 
-  const handleDetectVoice = async () => {
-    if (!selectedFile) {
-      alert("Please select a file first!");
-      return;
+ const handleDetectVoice = async () => {
+  if (!selectedFile) {
+    alert("Please select a file first!");
+    return;
+  }
+
+  setLoading(true);
+  setShowResult(false);
+
+  const formData = new FormData();
+  formData.append("audio", selectedFile);
+
+  try {
+    // ✅ Use the global BACKEND_URL
+    const response = await fetch(`${BACKEND_URL}/detect`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error("Backend returned an error");
     }
 
-    setLoading(true);
-    setShowResult(false);
+    const result = await response.json();
+    result.explanation = result.explanation || ["No explanation provided"];
+    setDetectionResult(result);
+    setShowResult(true);
 
-    const formData = new FormData();
-    formData.append("audio", selectedFile);
+  } catch (err) {
+    console.error(err);
+    // ✅ Fix alert to show correct backend URL
+    alert(`Failed to detect voice. Check backend at ${BACKEND_URL}`);
+  } finally {
+    setLoading(false);
+  }
+};
 
-    try {
-      const BACKEND_URL = "https://voice-detect-backend.onrender.com";
-
-const response = await fetch(`${BACKEND_URL}/detect`, {
-  method: "POST",
-  body: formData,
-});
-
-
-      if (!response.ok) {
-        throw new Error("Backend returned an error");
-      }
-
-      const result = await response.json();
-      result.explanation = result.explanation || ["No explanation provided"];
-      setDetectionResult(result);
-      setShowResult(true);
-    } catch (err) {
-      console.error(err);
-      alert("Failed to detect voice. Check backend at http://localhost:8000");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const resetDetection = () => {
     setSelectedFile(null);
