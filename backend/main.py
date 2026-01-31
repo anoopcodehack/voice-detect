@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 app = FastAPI(title="AI Voice Detection API", version="0.1.0")
 
+# CORS (allow frontend)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,65 +29,48 @@ def root():
     return {"message": "AI Voice Detection Backend Running ✅"}
 
 @app.post("/api/voice-detection")
-def detect_voice(request: VoiceRequest, x_api_key: str = Header(None)):
+def detect_voice(
+    request: VoiceRequest,
+    x_api_key: str = Header(None)
+):
     # API key check
     if x_api_key != API_KEY:
-        raise HTTPException(
-            status_code=401,
-            detail={"status": "error", "message": "Invalid API key or malformed request"}
-        )
+        raise HTTPException(status_code=401, detail="Invalid API key")
 
-    # Language check
     if request.language not in SUPPORTED_LANGUAGES:
-        raise HTTPException(
-            status_code=400,
-            detail={"status": "error", "message": "Unsupported language"}
-        )
+        raise HTTPException(status_code=400, detail="Unsupported language")
 
-    # Audio format check
     if request.audioFormat.lower() != "mp3":
-        raise HTTPException(
-            status_code=400,
-            detail={"status": "error", "message": "Invalid audio format"}
-        )
+        raise HTTPException(status_code=400, detail="Only mp3 supported")
 
-    # Audio data check
     if not request.audioBase64:
-        raise HTTPException(
-            status_code=400,
-            detail={"status": "error", "message": "Audio data missing"}
-        )
+        raise HTTPException(status_code=400, detail="Audio missing")
 
-    # Decode Base64
     try:
         audio_bytes = base64.b64decode(request.audioBase64)
     except Exception:
-        raise HTTPException(
-            status_code=400,
-            detail={"status": "error", "message": "Invalid Base64 audio"}
-        )
+        raise HTTPException(status_code=400, detail="Invalid base64")
 
-    # Detection logic placeholder
-    with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as temp_audio:
-        temp_audio.write(audio_bytes)
-        temp_audio.flush()
+    with tempfile.NamedTemporaryFile(delete=True, suffix=".mp3") as f:
+        f.write(audio_bytes)
+        f.flush()
 
-        file_size = len(audio_bytes)
-        if file_size > 1_000_000:
+        size = len(audio_bytes)
+        if size > 1_000_000:
             classification = "AI_GENERATED"
             confidence = round(random.uniform(0.85, 0.95), 2)
-            explanation = "Unnatural pitch consistency and robotic speech patterns detected"
+            explanation = "Robotic patterns detected"
         else:
             classification = "HUMAN"
             confidence = round(random.uniform(0.80, 0.92), 2)
-            explanation = "Natural pitch variation and human-like speech characteristics detected"
+            explanation = "Natural human speech detected"
 
     return {
         "status": "success",
         "language": request.language,
         "classification": classification,
         "confidenceScore": confidence,
-        "explanation": explanation
+        "explanation": explanation,
     }
 
 
