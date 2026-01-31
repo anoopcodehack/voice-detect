@@ -1,18 +1,19 @@
 "use client";
 
-import { useState, useRef } from "react";  // ✅ Added useRef
+import { useState, useRef } from "react";
 
 export default function HomePage() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [detectionResult, setDetectionResult] = useState(null);
   const [showResult, setShowResult] = useState(false);
-  const fileInputRef = useRef(null);  // ✅ Added file input ref
+  const fileInputRef = useRef(null);
 
+  // ✅ FIXED: handleFileChange added
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     setSelectedFile(file);
-    // Reset result when new file selected
+    // Reset previous results
     setDetectionResult(null);
     setShowResult(false);
   };
@@ -40,9 +41,9 @@ export default function HomePage() {
       }
 
       const result = await response.json();
+      result.explanation = result.explanation || ["No explanation provided"];
       setDetectionResult(result);
       setShowResult(true);
-      
     } catch (err) {
       console.error(err);
       alert("Failed to detect voice. Check backend at http://localhost:8000");
@@ -55,7 +56,6 @@ export default function HomePage() {
     setSelectedFile(null);
     setDetectionResult(null);
     setShowResult(false);
-    // ✅ FIXED: Use ref instead of document.querySelector
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -100,8 +100,8 @@ export default function HomePage() {
               <input 
                 type="file" 
                 accept="audio/*" 
-                onChange={handleFileChange}
-                ref={fileInputRef}  // ✅ FIXED: Added ref here
+                onChange={handleFileChange}  // ✅ fixed here
+                ref={fileInputRef}
                 style={{
                   width: "100%",
                   padding: "12px",
@@ -235,6 +235,7 @@ export default function HomePage() {
     </div>
   );
 }
+
 
 
 
