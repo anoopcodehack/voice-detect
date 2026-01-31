@@ -107,7 +107,7 @@ export default function HomePage() {
       </select>
 
       <label className="file-label">
-        <span className="mic">🎙️</span> Upload Audio
+        <span className="mic">🎤</span> Upload Audio
         <input
           className="file"
           type="file"
