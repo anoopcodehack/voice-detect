@@ -1,0 +1,5 @@
+{
+    "git.blame.statusBarItem.enabled": true,
+    "git.autorefresh": true,
+    "git.blame.editorDecoration.enabled": true
+}
