@@ -31,10 +31,13 @@ export default function HomePage() {
     formData.append("audio", selectedFile);
 
     try {
-      const response = await fetch("http://localhost:8000/detect", {
-        method: "POST",
-        body: formData,
-      });
+      const BACKEND_URL = "https://voice-detect-backend.onrender.com";
+
+const response = await fetch(`${BACKEND_URL}/detect`, {
+  method: "POST",
+  body: formData,
+});
+
 
       if (!response.ok) {
         throw new Error("Backend returned an error");
