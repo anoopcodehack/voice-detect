@@ -1,14 +1,20 @@
+import os
+import random
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-import random
-import string
 
 app = FastAPI(title="AI Voice Detection Backend")
 
-# CORS middleware for Next.js frontend (localhost:3000)
+# ✅ Read frontend URL from environment variable
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+
+if not FRONTEND_URL:
+    raise RuntimeError("FRONTEND_URL environment variable is not set")
+
+# ✅ Proper CORS (NO localhost hardcoding)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -22,39 +28,38 @@ async def root():
 async def detect(audio: UploadFile = File(...)):
     # Validate file extension
     if not audio.filename.lower().endswith((".wav", ".mp3", ".ogg")):
-        raise HTTPException(status_code=400, detail="Invalid audio file format. Use WAV, MP3, or OGG.")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid audio file format. Use WAV, MP3, or OGG."
+        )
 
-    # Read audio content (we don't process it yet, just validate)
-    contents = await audio.read()
+    # Read audio (placeholder for real ML later)
+    await audio.read()
 
-    # 🎲 RANDOM AI DETECTION RESULTS (different every time!)
-    is_human = random.choice([True, False])  # 50/50 Human vs AI
+    # 🎲 RANDOM AI DETECTION RESULTS
+    is_human = random.choice([True, False])
     classification = "Human" if is_human else "AI"
-    
-    # Random confidence between 65-99%
+
     confidence = round(random.uniform(0.65, 0.99), 2)
-    
-    # Random explanations (pick 2 different ones each time)
+
     explanations = [
         "MFCC spectral features match human patterns",
-        "Pitch contour shows natural variation", 
+        "Pitch contour shows natural variation",
         "Formant structure typical of vocal tract",
         "Mel spectrogram has organic artifacts",
         "Fundamental frequency natural jitter",
         "Spectral centroid within human range",
         "Zero crossing rate matches speech patterns"
     ]
-    
-    # Pick 2 random explanations
+
     explanation = random.sample(explanations, 2)
 
-    result = {
+    return {
         "classification": classification,
         "confidence": confidence,
         "explanation": explanation
     }
 
-    return result
 
 
 
