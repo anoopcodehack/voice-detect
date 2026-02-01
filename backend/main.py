@@ -7,6 +7,7 @@ import os
 import random
 import numpy as np
 import librosa
+from mangum import Mangum
 
 app = FastAPI(title="AI Voice Detection API", version="1.0.0")
 
@@ -151,4 +152,4 @@ def detect_voice(payload: VoiceRequest, x_api_key: str = Header(None)):
         "confidenceScore": round(confidence, 2),
         "explanation": explanation,
     }
-
+handler = Mangum(app)
