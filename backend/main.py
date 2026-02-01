@@ -23,7 +23,7 @@ SUPPORTED_LANGUAGES = [
     "Telugu",
 ]
 
-FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")
+FRONTEND_ORIGIN = os.getenv("https://voice-detect-inky.vercel.app", "http://localhost:3000")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[FRONTEND_ORIGIN],
