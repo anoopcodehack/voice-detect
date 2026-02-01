@@ -11,7 +11,9 @@ import librosa
 app = FastAPI(title="AI Voice Detection API", version="1.0.0")
 
 # ================= CONFIG =================
-API_KEY = os.getenv("API_KEY", "sk_test_123456789")
+API_KEY = os.getenv("API_KEY")
+if not API_KEY:
+    raise RuntimeError("API_KEY environment variable must be set")
 
 SUPPORTED_LANGUAGES = [
     "Tamil",
@@ -21,9 +23,10 @@ SUPPORTED_LANGUAGES = [
     "Telugu",
 ]
 
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[FRONTEND_ORIGIN],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -75,6 +78,22 @@ def classify_voice(pitch_var, flatness, zcr, rms):
     else:
         return "HUMAN", confidence, "Natural pitch variation and human speech dynamics detected"
 
+
+def is_mp3(data: bytes) -> bool:
+    """Basic MP3 validity check: ID3 header or MP3 frame sync.
+
+    This is a lightweight check to catch obvious non-MP3 payloads without full decoding.
+    """
+    if not data or len(data) < 100:
+        return False
+    # ID3v2 tag
+    if data[:3] == b"ID3":
+        return True
+    # Frame sync (0xFFF) check: first byte 0xFF and top 3 bits of second byte set
+    if data[0] == 0xFF and (data[1] & 0xE0) == 0xE0:
+        return True
+    return False
+
 # ================= ROUTES =================
 @app.get("/")
 def root():
@@ -111,20 +130,15 @@ def detect_voice(payload: VoiceRequest, x_api_key: str = Header(None)):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid Base64 audio")
 
+    # Validate it's an MP3 file before trying to analyze
+    if not is_mp3(audio_bytes):
+        raise HTTPException(status_code=400, detail="Invalid MP3 file")
+
     try:
         pitch_var, flatness, zcr, rms = extract_features(audio_bytes)
         classification, confidence, explanation = classify_voice(pitch_var, flatness, zcr, rms)
     except Exception:
-        # Fallback heuristic for invalid or small synthetic test audio
-        size = len(audio_bytes) if audio_bytes else 0
-        if size > 1_000_000:
-            classification = "AI_GENERATED"
-            confidence = round(random.uniform(0.85, 0.95), 2)
-            explanation = "Robotic patterns detected (fallback)"
-        else:
-            classification = "HUMAN"
-            confidence = round(random.uniform(0.80, 0.92), 2)
-            explanation = "Natural human speech detected (fallback)"
+        raise HTTPException(status_code=400, detail="Failed to process audio")
 
     return {
         "status": "success",

@@ -1,9 +1,18 @@
+import os
+os.environ['API_KEY'] = "sk_test_123456789"
 from fastapi.testclient import TestClient
 from main import app
 
 API_KEY = "sk_test_123456789"
 ALLOWED_LANGUAGES = ["Tamil", "English", "Hindi", "Malayalam", "Telugu"]
 DUMMY_AUDIO = b"FAKE_MP3_DATA"
+
+# Try to load a real sample mp3 from repo root for accurate tests
+SAMPLE_AUDIO = None
+sample_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "sample.mp3"))
+if os.path.exists(sample_path):
+    with open(sample_path, "rb") as f:
+        SAMPLE_AUDIO = f.read()
 
 client = TestClient(app)
 
@@ -50,7 +59,11 @@ def test_allowed_languages():
     print("\nTest 3: Test all allowed languages...")
     headers = {"x-api-key": API_KEY}
     for lang in ALLOWED_LANGUAGES:
-        response = post_json_audio(lang, headers=headers)
+        # Use a real sample mp3 if present; otherwise skip the accurate detection test
+        if SAMPLE_AUDIO is None:
+            print(f"❌ SKIP: {lang} → missing sample.mp3 (place sample.mp3 at repo root to run this test)")
+            continue
+        response = post_json_audio(lang, headers=headers, audio_bytes=SAMPLE_AUDIO)
         try:
             data = response.json()
         except Exception:
@@ -77,7 +90,10 @@ def test_invalid_base64():
 def test_confidence_range():
     print("\nTest 5: Confidence score in [0,1]")
     headers = {"x-api-key": API_KEY}
-    response = post_json_audio("Tamil", headers=headers)
+    if SAMPLE_AUDIO is None:
+        print("❌ SKIP: missing sample.mp3 (place sample.mp3 at repo root to run this test)")
+        return
+    response = post_json_audio("Tamil", headers=headers, audio_bytes=SAMPLE_AUDIO)
     data = response.json()
     cs = data.get("confidenceScore")
     if isinstance(cs, (float, int)) and 0 <= cs <= 1:
@@ -86,13 +102,33 @@ def test_confidence_range():
         print("❌ FAIL", cs)
 
 
+def test_invalid_mp3_rejected():
+    print("\nTest 6: Reject invalid MP3 payloads")
+    import base64 as _b64
+    payload = {"language": "Tamil", "audioFormat": "mp3", "audioBase64": _b64.b64encode(b"NOT_MP3_DATA").decode()}
+    headers = {"x-api-key": API_KEY}
+    response = client.post("/api/voice-detection", json=payload, headers=headers)
+    try:
+        data = response.json()
+    except Exception:
+        print("❌ FAIL: Invalid JSON response")
+        return
+    if response.status_code == 400 and data.get("status") == "error":
+        print("✅ PASS")
+    else:
+        print("❌ FAIL", response.status_code, response.text)
+
+
 def test_json_base64_upload():
     print("\nTest 4: JSON base64 upload path...")
     import base64 as _b64
+    if SAMPLE_AUDIO is None:
+        print("❌ SKIP: missing sample.mp3 (place sample.mp3 at repo root to run this test)")
+        return
     payload = {
         "language": "Tamil",
         "audioFormat": "mp3",
-        "audioBase64": _b64.b64encode(DUMMY_AUDIO).decode()
+        "audioBase64": _b64.b64encode(SAMPLE_AUDIO).decode()
     }
     headers = {"x-api-key": API_KEY}
     response = client.post("/api/voice-detection", json=payload, headers=headers)
