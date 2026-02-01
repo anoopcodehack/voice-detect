@@ -30,10 +30,12 @@ FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_ORIGIN],
+    allow_origins=["*"],   # REQUIRED
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 # ================= SCHEMA =================
@@ -117,6 +119,9 @@ async def http_exception_handler(request, exc: HTTPException):
 async def validation_exception_handler(request, exc: RequestValidationError):
     return JSONResponse(status_code=400, content={"status": "error", "message": "Invalid request payload"})
 
+@app.options("/api/voice-detection")
+def options_voice_detection():
+    return {"status": "ok"}
 
 @app.post("/api/voice-detection")
 def detect_voice(payload: VoiceRequest, x_api_key: str = Header(None)):
