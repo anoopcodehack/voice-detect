@@ -20,33 +20,39 @@ export default function HomePage() {
   const handleSubmit = async () => {
     if (!file) return setError("Please select an MP3 file");
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL + "/api/voice-detection";
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
     const API_KEY = process.env.NEXT_PUBLIC_API_KEY;
-    if (!API_URL || !API_KEY) return setError("Missing API configuration");
+    if (!BASE_URL || !API_KEY) return setError("Missing API configuration");
+    const API_URL = BASE_URL.replace(/\/$/, "") + "/api/voice-detection";
+
+    // Ensure file looks like an MP3
+    const isMp3 = file.type === "audio/mpeg" || file.name.toLowerCase().endsWith(".mp3");
+    if (!isMp3) return setError("Please upload an MP3 file");
 
     setLoading(true);
     setError("");
     setResult(null);
 
-    try {
-      const formData = new FormData();
-      formData.append("language", language);
-      formData.append("audio", file, file.name);
-
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "x-api-key": API_KEY }, // do NOT set Content-Type; the browser will set multipart boundary
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.detail || "Backend error");
-      setResult({ ...data, confidenceScore: Number(data.confidenceScore) });
-    } catch (err) {
-      setError(err.message || "Request failed");
-    } finally {
-      setLoading(false);
-    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const base64Audio = reader.result.split(",")[1];
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-api-key": API_KEY },
+          body: JSON.stringify({ language, audioFormat: "mp3", audioBase64: base64Audio }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.message || "Backend error");
+        setResult({ ...data, confidenceScore: Number(data.confidenceScore) });
+      } catch (err) {
+        setError(err.message || "Request failed");
+      } finally {
+        setLoading(false);
+      }
+    };
+    reader.onerror = () => { setError("Failed to read audio file"); setLoading(false); };
+    reader.readAsDataURL(file);
   };
 
   return (

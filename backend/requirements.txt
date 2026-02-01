@@ -1,9 +1,9 @@
 fastapi
-uvicorn[standard]
-python-dotenv
-librosa
+uvicorn
+pydantic
 numpy
+librosa
 soundfile
-python-multipart
+
 
 
