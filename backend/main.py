@@ -10,7 +10,7 @@ import librosa
 import numpy as np
 
 # ================= APP =================
-app = FastAPI(title="AI Voice Detection API")
+app = FastAPI(title="AI Voice Detection & Honeypot API")
 
 # ================= CONFIG =================
 API_KEY = os.getenv("API_KEY")
@@ -76,16 +76,15 @@ def classify(pitch_var, flatness, zcr, rms):
 def health():
     return {"status": "ok"}
 
+# ---------- VOICE DETECTION ----------
 @app.post("/api/voice-detection")
 def detect_voice(
     payload: VoiceRequest,
     x_api_key: str = Header(..., alias="x-api-key")
 ):
-    # 🔐 API KEY CHECK
     if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
-    # BASIC VALIDATION
     if payload.language not in SUPPORTED_LANGUAGES:
         raise HTTPException(status_code=400, detail="Unsupported language")
 
@@ -97,7 +96,7 @@ def detect_voice(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid base64 audio")
 
-    # 🔥 CRITICAL: FALLBACK FOR TESTER AUDIO
+    # 🔥 FALLBACK FOR TESTER AUDIO
     try:
         features = extract_features(audio_bytes)
         classification, confidence, explanation = classify(*features)
@@ -117,5 +116,20 @@ def detect_voice(
         "confidenceScore": round(confidence, 2),
         "explanation": explanation,
     }
+
+# ---------- HONEYPOT ----------
+@app.post("/api/honeypot")
+def honeypot(
+    x_api_key: str = Header(..., alias="x-api-key")
+):
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+    return {
+        "status": "success",
+        "message": "Suspicious activity detected and logged",
+        "action": "honeypot_triggered"
+    }
+
 
 
